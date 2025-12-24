@@ -97,7 +97,7 @@ interface IERC20Metadata is IERC20 {
 }
 
 /**
- * @dev Implementation of the {IERC20} interface.
+ * @dev Implementation of the {IERC20} interface with Ownable access control.
  *
  * This implementation is agnostic to the way tokens are created. This means
  * that a supply mechanism has to be added in a derived contract using {_mint}.
@@ -114,15 +114,44 @@ contract ERC20Token is IERC20, IERC20Metadata {
     string private _name;
     string private _symbol;
 
+    // Access control
+    address private _owner;
+
+    /**
+     * @dev Emitted when ownership is transferred.
+     */
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev The caller account is not authorized to perform an operation.
+     */
+    error OwnableUnauthorizedAccount(address account);
+
+    /**
+     * @dev The owner is not a valid owner account. (eg. `address(0)`)
+     */
+    error OwnableInvalidOwner(address owner);
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        _checkOwner();
+        _;
+    }
+
     /**
      * @dev Sets the values for {name} and {symbol}.
      *
      * All two of these values are immutable: they can only be set once during
      * construction.
+     *
+     * The deployer is set as the initial owner.
      */
     constructor(string memory name_, string memory symbol_, uint256 initialSupply) {
         _name = name_;
         _symbol = symbol_;
+        _transferOwnership(msg.sender);
         _mint(msg.sender, initialSupply);
     }
 
@@ -181,16 +210,15 @@ contract ERC20Token is IERC20, IERC20Metadata {
      * - the caller must have a balance of at least `value`.
      */
     function transfer(address to, uint256 value) public virtual returns (bool) {
-        address owner = msg.sender;
-        _transfer(owner, to, value);
+        _transfer(msg.sender, to, value);
         return true;
     }
 
     /**
      * @dev See {IERC20-allowance}.
      */
-    function allowance(address owner, address spender) public view virtual returns (uint256) {
-        return _allowances[owner][spender];
+    function allowance(address tokenOwner, address spender) public view virtual returns (uint256) {
+        return _allowances[tokenOwner][spender];
     }
 
     /**
@@ -204,8 +232,7 @@ contract ERC20Token is IERC20, IERC20Metadata {
      * - `spender` cannot be the zero address.
      */
     function approve(address spender, uint256 value) public virtual returns (bool) {
-        address owner = msg.sender;
-        _approve(owner, spender, value);
+        _approve(msg.sender, spender, value);
         return true;
     }
 
@@ -310,7 +337,7 @@ contract ERC20Token is IERC20, IERC20Metadata {
     }
 
     /**
-     * @dev Sets `value` as the allowance of `spender` over the `owner` s tokens.
+     * @dev Sets `value` as the allowance of `spender` over the `tokenOwner` s tokens.
      *
      * This internal function is equivalent to `approve`, and can be used to
      * e.g. set automatic allowances for certain subsystems, etc.
@@ -319,11 +346,11 @@ contract ERC20Token is IERC20, IERC20Metadata {
      *
      * Requirements:
      *
-     * - `owner` cannot be the zero address.
+     * - `tokenOwner` cannot be the zero address.
      * - `spender` cannot be the zero address.
      */
-    function _approve(address owner, address spender, uint256 value) internal {
-        _approve(owner, spender, value, true);
+    function _approve(address tokenOwner, address spender, uint256 value) internal {
+        _approve(tokenOwner, spender, value, true);
     }
 
     /**
@@ -335,30 +362,104 @@ contract ERC20Token is IERC20, IERC20Metadata {
      *
      * Requirements are the same as {_approve}.
      */
-    function _approve(address owner, address spender, uint256 value, bool emitEvent) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
+    function _approve(address tokenOwner, address spender, uint256 value, bool emitEvent) internal virtual {
+        require(tokenOwner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
-        _allowances[owner][spender] = value;
+        _allowances[tokenOwner][spender] = value;
         if (emitEvent) {
-            emit Approval(owner, spender, value);
+            emit Approval(tokenOwner, spender, value);
         }
     }
 
     /**
-     * @dev Updates `owner` s allowance for `spender` based on spent `value`.
+     * @dev Updates `tokenOwner` s allowance for `spender` based on spent `value`.
      *
      * Does not update the allowance value in case of infinite allowance.
      * Revert if not enough allowance is available.
      *
      * Does not emit an {Approval} event.
      */
-    function _spendAllowance(address owner, address spender, uint256 value) internal virtual {
-        uint256 currentAllowance = allowance(owner, spender);
+    function _spendAllowance(address tokenOwner, address spender, uint256 value) internal virtual {
+        uint256 currentAllowance = allowance(tokenOwner, spender);
         if (currentAllowance != type(uint256).max) {
             require(currentAllowance >= value, "ERC20: insufficient allowance");
             unchecked {
-                _approve(owner, spender, currentAllowance - value, false);
+                _approve(tokenOwner, spender, currentAllowance - value, false);
             }
         }
+    }
+
+    // ============ Ownable Functions ============
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if the sender is not the owner.
+     */
+    function _checkOwner() internal view virtual {
+        if (owner() != msg.sender) {
+            revert OwnableUnauthorizedAccount(msg.sender);
+        }
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby disabling any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        _transferOwnership(address(0));
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        if (newOwner == address(0)) {
+            revert OwnableInvalidOwner(address(0));
+        }
+        _transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Internal function without access restriction.
+     */
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
+
+    // ============ Owner-Only Token Functions ============
+
+    /**
+     * @dev Creates `amount` tokens and assigns them to `account`.
+     *
+     * Can only be called by the owner.
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     */
+    function mint(address account, uint256 amount) public virtual onlyOwner {
+        _mint(account, amount);
+    }
+
+    /**
+     * @dev Destroys `amount` tokens from `account`.
+     *
+     * Can only be called by the owner.
+     *
+     * Emits a {Transfer} event with `to` set to the zero address.
+     */
+    function burn(address account, uint256 amount) public virtual onlyOwner {
+        _burn(account, amount);
     }
 }

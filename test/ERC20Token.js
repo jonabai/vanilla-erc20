@@ -126,4 +126,138 @@ describe("ERC20Token", function () {
       expect(await token.allowance(owner.address, addr1.address)).to.equal(maxUint256);
     });
   });
+
+  describe("Ownership", function () {
+    it("Should set deployer as owner", async function () {
+      expect(await token.owner()).to.equal(owner.address);
+    });
+
+    it("Should emit OwnershipTransferred on deployment", async function () {
+      const deployTx = await hre.ethers.deployContract("ERC20Token", [
+        NAME,
+        SYMBOL,
+        INITIAL_SUPPLY,
+      ]);
+
+      await expect(deployTx.deploymentTransaction())
+        .to.emit(deployTx, "OwnershipTransferred")
+        .withArgs(hre.ethers.ZeroAddress, owner.address);
+    });
+
+    it("Should transfer ownership", async function () {
+      await expect(token.transferOwnership(addr1.address))
+        .to.emit(token, "OwnershipTransferred")
+        .withArgs(owner.address, addr1.address);
+
+      expect(await token.owner()).to.equal(addr1.address);
+    });
+
+    it("Should fail to transfer ownership if not owner", async function () {
+      await expect(token.connect(addr1).transferOwnership(addr2.address))
+        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+        .withArgs(addr1.address);
+    });
+
+    it("Should fail to transfer ownership to zero address", async function () {
+      await expect(token.transferOwnership(hre.ethers.ZeroAddress))
+        .to.be.revertedWithCustomError(token, "OwnableInvalidOwner")
+        .withArgs(hre.ethers.ZeroAddress);
+    });
+
+    it("Should renounce ownership", async function () {
+      await expect(token.renounceOwnership())
+        .to.emit(token, "OwnershipTransferred")
+        .withArgs(owner.address, hre.ethers.ZeroAddress);
+
+      expect(await token.owner()).to.equal(hre.ethers.ZeroAddress);
+    });
+
+    it("Should fail to renounce ownership if not owner", async function () {
+      await expect(token.connect(addr1).renounceOwnership())
+        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+        .withArgs(addr1.address);
+    });
+  });
+
+  describe("Minting", function () {
+    it("Should allow owner to mint tokens", async function () {
+      const mintAmount = hre.ethers.parseEther("1000");
+      const initialBalance = await token.balanceOf(addr1.address);
+
+      await expect(token.mint(addr1.address, mintAmount))
+        .to.emit(token, "Transfer")
+        .withArgs(hre.ethers.ZeroAddress, addr1.address, mintAmount);
+
+      expect(await token.balanceOf(addr1.address)).to.equal(initialBalance + mintAmount);
+    });
+
+    it("Should increase total supply when minting", async function () {
+      const mintAmount = hre.ethers.parseEther("1000");
+      const initialSupply = await token.totalSupply();
+
+      await token.mint(addr1.address, mintAmount);
+
+      expect(await token.totalSupply()).to.equal(initialSupply + mintAmount);
+    });
+
+    it("Should fail to mint if not owner", async function () {
+      const mintAmount = hre.ethers.parseEther("1000");
+
+      await expect(token.connect(addr1).mint(addr2.address, mintAmount))
+        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+        .withArgs(addr1.address);
+    });
+
+    it("Should fail to mint to zero address", async function () {
+      const mintAmount = hre.ethers.parseEther("1000");
+
+      await expect(token.mint(hre.ethers.ZeroAddress, mintAmount))
+        .to.be.revertedWith("ERC20: mint to the zero address");
+    });
+  });
+
+  describe("Burning", function () {
+    it("Should allow owner to burn tokens", async function () {
+      const burnAmount = hre.ethers.parseEther("1000");
+      const initialBalance = await token.balanceOf(owner.address);
+
+      await expect(token.burn(owner.address, burnAmount))
+        .to.emit(token, "Transfer")
+        .withArgs(owner.address, hre.ethers.ZeroAddress, burnAmount);
+
+      expect(await token.balanceOf(owner.address)).to.equal(initialBalance - burnAmount);
+    });
+
+    it("Should decrease total supply when burning", async function () {
+      const burnAmount = hre.ethers.parseEther("1000");
+      const initialSupply = await token.totalSupply();
+
+      await token.burn(owner.address, burnAmount);
+
+      expect(await token.totalSupply()).to.equal(initialSupply - burnAmount);
+    });
+
+    it("Should fail to burn if not owner", async function () {
+      const burnAmount = hre.ethers.parseEther("1000");
+
+      await expect(token.connect(addr1).burn(owner.address, burnAmount))
+        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+        .withArgs(addr1.address);
+    });
+
+    it("Should fail to burn from zero address", async function () {
+      const burnAmount = hre.ethers.parseEther("1000");
+
+      await expect(token.burn(hre.ethers.ZeroAddress, burnAmount))
+        .to.be.revertedWith("ERC20: burn from the zero address");
+    });
+
+    it("Should fail to burn more than balance", async function () {
+      const balance = await token.balanceOf(addr1.address);
+      const burnAmount = balance + 1n;
+
+      await expect(token.burn(addr1.address, burnAmount))
+        .to.be.revertedWith("ERC20: transfer amount exceeds balance");
+    });
+  });
 });
