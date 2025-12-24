@@ -1,6 +1,6 @@
 # Vanilla ERC20 Token
 
-A minimal ERC20 token implementation in Solidity without external dependencies (no OpenZeppelin). Everything is contained in a single contract file.
+A "vanilla" ERC20 token implementation in Solidity without external dependencies (no OpenZeppelin). Everything is contained in a single contract file.
 
 ## Overview
 
