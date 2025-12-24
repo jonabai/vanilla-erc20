@@ -1,4 +1,4 @@
-# Simplified ERC20 Token
+# Vanilla ERC20 Token
 
 A minimal ERC20 token implementation in Solidity without external dependencies (no OpenZeppelin). Everything is contained in a single contract file.
 
@@ -76,7 +76,7 @@ contracts/ERC20Token.sol
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd simplified-erc20
+cd vanilla-erc20
 
 # Install dependencies
 npm install
@@ -155,7 +155,7 @@ npx hardhat ignition deploy ./ignition/modules/ERC20Token.js --network sepolia
 ## Project Structure
 
 ```
-simplified-erc20/
+vanilla-erc20/
 ├── contracts/
 │   └── ERC20Token.sol       # ERC20 implementation
 ├── ignition/

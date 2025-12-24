@@ -1,5 +1,5 @@
 {
-  "name": "simplified-erc20",
+  "name": "vanilla-erc20",
   "version": "1.0.0",
   "description": "Simple ERC20 Token without OpenZeppelin",
   "scripts": {
