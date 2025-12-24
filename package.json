@@ -1,0 +1,31 @@
+{
+  "name": "simplified-erc20",
+  "version": "1.0.0",
+  "description": "Simple ERC20 Token without OpenZeppelin",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test",
+    "coverage": "hardhat coverage",
+    "lint": "solhint 'contracts/**/*.sol'",
+    "lint:fix": "solhint 'contracts/**/*.sol' --fix",
+    "format": "prettier --write 'contracts/**/*.sol' 'scripts/**/*.js' 'test/**/*.js'",
+    "format:check": "prettier --check 'contracts/**/*.sol' 'scripts/**/*.js' 'test/**/*.js'",
+    "deploy:local": "hardhat ignition deploy ./ignition/modules/ERC20Token.js --network localhost",
+    "node": "hardhat node"
+  },
+  "keywords": [
+    "solidity",
+    "erc20",
+    "hardhat"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "prettier": "^3.7.4",
+    "prettier-plugin-solidity": "^2.2.1",
+    "solhint": "^6.0.2"
+  }
+}
